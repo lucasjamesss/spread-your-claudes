@@ -97,7 +97,7 @@ Every lane takes the same flags:
 ## ⚡ Quick start
 
 ```bash
-git clone https://github.com/Vibes-lj/spread-your-claudes
+git clone https://github.com/lucasjamesss/spread-your-claudes
 cd spread-your-claudes
 ./install.sh
 ```
