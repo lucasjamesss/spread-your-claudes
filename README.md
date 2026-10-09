@@ -120,6 +120,7 @@ Every lane takes the same flags:
 ```bash
 git clone https://github.com/lucasjamesss/spread-your-claudes
 cd spread-your-claudes
+git checkout 154f932424f15b2b7e042f7d378a2eafa62213bf
 ./install.sh
 ```
 
