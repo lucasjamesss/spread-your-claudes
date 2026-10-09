@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# lane-doctor
+#
+# Offline setup check for spread-your-claudes. Tells you, in plain words, which
+# lanes are ready, which need one more step, and exactly what that step is.
+# Makes no network calls and never prints a secret.
+#
+#   exit 0  -> at least one lane is ready to use
+#   exit 1  -> nothing is ready yet (the output says what to do next)
+set -uo pipefail
+
+PREFIX="${PREFIX:-$HOME/.local/bin}"
+LANES_DIR="${CLAUDE_LANES_DIR:-$HOME/.local/share/claude-lanes}"
+CFG="${CLAUDE_LANES_CONFIG:-$HOME/.config/claude-lanes/budgets.json}"
+SECRETS_DIR="$HOME/.config/secrets"
+
+ok()   { printf '  [ok]   %s\n' "$*"; }
+todo() { printf '  [todo] %s\n' "$*"; }
+note() { printf '         %s\n' "$*"; }
+
+# env_has <file> <VAR>  -> 0 if VAR has a non-empty value in the file
+env_has() {
+  [ -f "$1" ] || return 1
+  local v
+  v="$(grep -E "^[[:space:]]*$2=" "$1" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '[:space:]"'"'")"
+  [ -n "$v" ]
+}
+
+echo "spread-your-claudes: setup check"
+echo
+
+echo "Basics"
+if command -v python3 >/dev/null 2>&1; then
+  ok "python3 found"
+else
+  todo "python3 not found. Install Python 3 first (https://www.python.org/downloads/)."
+fi
+
+missing=0
+for w in lane-budget lane-guard lane-cool lane-compare gemini-think cursor-think codex-think geminiweb-think; do
+  command -v "$w" >/dev/null 2>&1 || missing=$((missing+1))
+done
+if [ "$missing" -eq 0 ]; then
+  ok "all wrappers are on your PATH"
+else
+  todo "$missing wrapper(s) not found on your PATH."
+  case ":$PATH:" in
+    *":$PREFIX:"*) note "Run ./install.sh from the repo folder, then open a new terminal." ;;
+    *) note "Add this line to your shell profile (~/.zshrc on Mac), then open a new terminal:"
+       note "  export PATH=\"$PREFIX:\$PATH\"" ;;
+  esac
+fi
+
+if [ -f "$LANES_DIR/budget.py" ] && [ -f "$LANES_DIR/lib.sh" ]; then
+  ok "budget engine installed"
+else
+  todo "budget engine missing at $LANES_DIR. Run ./install.sh from the repo folder."
+fi
+
+if [ -f "$CFG" ]; then
+  ok "budget config found"
+else
+  todo "no budget config at $CFG. Run ./install.sh from the repo folder."
+fi
+
+echo
+echo "Lanes (you only need ONE)"
+ready=0
+
+# gemini: free API key, easiest lane
+g_cli=0; g_key=0
+command -v gemini >/dev/null 2>&1 && g_cli=1
+env_has "$SECRETS_DIR/gemini.env" GEMINI_API_KEY && g_key=1
+if [ $g_cli -eq 1 ] && [ $g_key -eq 1 ]; then
+  ok "gemini-think: READY"; ready=$((ready+1))
+else
+  todo "gemini-think: needs setup (easiest lane, free tier)"
+  [ $g_cli -eq 0 ] && note "1. Install the CLI:  npm install -g @google/gemini-cli"
+  [ $g_key -eq 0 ] && { note "2. Get a free key:   https://aistudio.google.com/apikey"
+                        note "   Paste it after GEMINI_API_KEY= in $SECRETS_DIR/gemini.env"; }
+fi
+
+# cursor
+c_cli=0
+command -v cursor-agent >/dev/null 2>&1 && c_cli=1
+if [ $c_cli -eq 1 ]; then
+  ok "cursor-think: CLI found"; ready=$((ready+1))
+  note "Can't verify your login offline. If a call fails, run: cursor-agent login"
+else
+  todo "cursor-think: optional. Install cursor-agent, then run: cursor-agent login"
+fi
+
+# codex
+x_cli=0; x_auth=0
+command -v codex >/dev/null 2>&1 && x_cli=1
+[ -f "$HOME/.codex/auth.json" ] && x_auth=1
+if [ $x_cli -eq 1 ] && [ $x_auth -eq 1 ]; then
+  ok "codex-think: READY"; ready=$((ready+1))
+else
+  todo "codex-think: optional. Install the Codex CLI and sign in with your ChatGPT account."
+fi
+
+# geminiweb: unofficial, never counted as the one lane you need
+if env_has "$SECRETS_DIR/gemini-web.env" GEMINI_WEB_1PSID; then
+  ok "geminiweb-think: cookies present (unofficial lane, read docs/COOKIES.md)"
+else
+  note "geminiweb-think: skipped. It is optional and unofficial; most people should skip it."
+fi
+
+echo
+if [ "$ready" -ge 1 ]; then
+  echo "Result: $ready lane(s) ready. Try:  gemini-think \"reply with one word: PONG\""
+  echo "Safe mode: set LANE_READONLY=1 so lanes read and answer but do not edit files."
+  exit 0
+else
+  echo "Result: no lane is ready yet. Do the [todo] steps for ONE lane above, then run lane-doctor again."
+  exit 1
+fi

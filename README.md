@@ -15,6 +15,27 @@
 
 ---
 
+## Start here (no terminal skills needed)
+
+**Easiest path:** open Claude Code in any folder and paste this:
+
+> Set up spread-your-claudes for me from https://github.com/lucasjamesss/spread-your-claudes. Clone it, run `./install.sh`, then run `lane-doctor` and walk me through whatever it says is missing. Start with the Gemini lane. Set `LANE_READONLY=1` so lanes only read and answer.
+
+**Doing it yourself:**
+
+1. Run the three commands under [Quick start](#-quick-start).
+2. Run `lane-doctor`. It checks your setup offline and tells you the exact next step for each lane. You only need **one** lane working.
+3. Optional safe mode: `export LANE_READONLY=1`. Lanes then read and answer but do not edit files. `codex-think` enforces this with a real sandbox. `gemini-think` and `cursor-think` follow it as an instruction, so treat it as a strong request, not a guarantee.
+
+**Good to know before you start:**
+
+- A lane sends the files you point it at to that provider (Google, Cursor, OpenAI). Only point lanes at code you are happy to send there, and never at files holding secrets.
+- By default lanes can edit files and run commands in the folder you give them. Use safe mode above if you want answers only.
+- Works on macOS. Linux mostly works (see the FAQ). Windows is not supported yet.
+- To remove everything: `./uninstall.sh` (add `--purge` to also delete your budget config and usage ledger).
+
+---
+
 ## The problem
 
 Coding agents like Claude Code re-send the **entire conversation** to the model on
@@ -69,7 +90,7 @@ answered a question or finished the whole subtask.
 
 ## How it works, in three steps
 
-1. **Install** — `./install.sh` symlinks 8 wrappers into `~/.local/bin`. No network, no daemon, re-runnable.
+1. **Install** — `./install.sh` symlinks 9 wrappers into `~/.local/bin`. No network, no daemon, re-runnable.
 2. **Set up one lane** — any single lane is useful on its own. `gemini-think` (free API tier) is the easiest.
 3. **Let your agent delegate** — drop the CLAUDE.md snippet in and Claude reaches for a lane before a big read *or* a self-contained subtask, picks one by fit, checks the budget, and reads back only the cited answer or result.
 
@@ -113,9 +134,10 @@ Then wire up **at least one** lane:
 | `codex-think` | install the Codex CLI and sign in |
 | `geminiweb-think` | optional / unofficial — [docs/COOKIES.md](docs/COOKIES.md) |
 
-Smoke test and check your budget:
+Check your setup, then smoke test and check your budget:
 
 ```bash
+lane-doctor
 gemini-think "reply with one word: PONG"
 lane-budget
 ```

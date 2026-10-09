@@ -52,12 +52,21 @@ EXTRA_ARGS=()
 [ -n "$EFFORT" ] && EXTRA_ARGS+=(-c "model_reasoning_effort=\"$EFFORT\"")
 [ -n "$MODEL" ] && EXTRA_ARGS+=(-m "$MODEL")
 
+# LANE_READONLY=1 -> lane may read and answer but not edit files. Enforced here
+# by Codex's read-only sandbox (a real block, not just an instruction).
+SANDBOX="workspace-write"
+READONLY_NOTE=""
+if [ -n "${LANE_READONLY:-}" ]; then
+  SANDBOX="read-only"
+  READONLY_NOTE="READ-ONLY CALL: do not edit, create, or delete any file, and do not commit. Answer only. "
+fi
+
 LIB="${CLAUDE_LANES_DIR:-$HOME/.local/share/claude-lanes}/lib.sh"
 [ -f "$LIB" ] && . "$LIB"
 T0=$(date +%s)
 
 PREFIX='You are being delegated a task by another agent, which remains the
-manager: it decides what to delegate and reviews what comes back. You may
+manager: it decides what to delegate and reviews what comes back. '"$READONLY_NOTE"'You may
 read, edit, write, run commands, and commit in the target directory as needed
 to complete the task well. Network access is disabled for this call -- do not
 attempt `git push`, curl, or anything else that leaves the machine; it will
@@ -72,7 +81,7 @@ if command -v lane-guard >/dev/null 2>&1; then
   lane-guard codex || exit $?
 fi
 
-RAW="$(cd "$DIR" && codex exec --skip-git-repo-check -s workspace-write \
+RAW="$(cd "$DIR" && codex exec --skip-git-repo-check -s "$SANDBOX" \
   -c sandbox_workspace_write.network_access=false \
   ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} "$PREFIX" 2>&1)"
 STATUS=$?

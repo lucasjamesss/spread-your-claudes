@@ -76,6 +76,7 @@ cat <<'EOF'
       cursor      -> run: cursor-agent login
       codex       -> install + sign in to the Codex CLI
       geminiweb   -> optional/unofficial: see docs/COOKIES.md
+  - check setup:  lane-doctor   (offline; tells you the next step per lane)
   - smoke test:   gemini-think "reply with one word: PONG"
   - check budget: lane-budget
   - wire your agent: paste claude/CLAUDE.md.snippet into ~/.claude/CLAUDE.md

@@ -64,12 +64,18 @@ if [ -f "$SECRETS" ]; then
 fi
 [ -z "${CURSOR_API_KEY:-}" ] && unset CURSOR_API_KEY   # don't pass an empty key
 
+# LANE_READONLY=1 -> tell the lane to read and answer only. Instruction-only for
+# this lane (its CLI has no per-call read-only switch), so treat it as a strong
+# request, not a guarantee. codex-think enforces it with a real sandbox.
+READONLY_NOTE=""
+[ -n "${LANE_READONLY:-}" ] && READONLY_NOTE="READ-ONLY CALL: do not edit, create, or delete any file, and do not commit. Answer only. "
+
 LIB="${CLAUDE_LANES_DIR:-$HOME/.local/share/claude-lanes}/lib.sh"
 [ -f "$LIB" ] && . "$LIB"
 T0=$(date +%s)
 
 PREFIX='You are being delegated a task by another agent, which remains the
-manager: it decides what to delegate and reviews what comes back. You may
+manager: it decides what to delegate and reviews what comes back. '"$READONLY_NOTE"' You may
 read, edit, write, run commands, and commit in this workspace as needed to
 complete the task well. Do NOT run `git push` or anything else that
 publishes/deploys/leaves the machine -- report back and let the calling agent
